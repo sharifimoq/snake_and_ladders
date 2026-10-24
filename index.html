@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مار و پله</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Tahoma', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+        }
+
+        /* ─── Setup Screen ─── */
+        #setup {
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 16px;
+            padding: 35px;
+            width: 360px;
+            color: #fff;
+            text-align: center;
+        }
+        #setup h1 { font-size: 2.2em; margin-bottom: 8px; }
+        #setup p  { opacity: .7; margin-bottom: 20px; font-size: .95em; }
+
+        .count-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+        .count-btn {
+            width: 52px; height: 52px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.25);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1.4em;
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .count-btn:hover  { border-color: #e94560; }
+        .count-btn.active { background: #e94560; border-color: #e94560; }
+
+        #playerInputs input {
+            display: block;
+            width: 100%;
+            padding: 11px 14px;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 9px;
+            color: #fff;
+            font-family: 'Tahoma', sans-serif;
+            font-size: 1em;
+            text-align: right;
+            transition: border .2s;
+        }
+        #playerInputs input:focus { outline: none; border-color: #e94560; }
+        #playerInputs input::placeholder { color: rgba(255,255,255,.4); }
+
+        .btn {
+            width: 100%;
+            padding: 13px;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Tahoma', sans-serif;
+            font-size: 1.05em;
+            cursor: pointer;
+            transition: filter .2s;
+        }
+        .btn:hover   { filter: brightness(1.15); }
+        .btn-green   { background: #4caf50; color: #fff; margin-top: 4px; }
+        .btn-red     { background: #e94560; color: #fff; }
+        .btn-dark    { background: rgba(255,255,255,0.12); color: #fff; margin-top: 8px; }
+        .btn:disabled{ opacity: .45; cursor: not-allowed; filter: none; }
+
+        /* ─── Game Screen ─── */
+        #game {
+            display: none;
+            gap: 18px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        canvas {
+            border: 3px solid #e94560;
+            border-radius: 10px;
+            box-shadow: 0 0 35px rgba(233,69,96,.35);
+            max-width: 100%;
+        }
+
+        .sidebar {
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 12px;
+            padding: 20px;
+            width: 230px;
+            color: #fff;
+        }
+        .sidebar h2 { text-align: center; font-size: 1.3em; margin-bottom: 14px; color: #e94560; }
+
+        .player-card {
+            padding: 10px 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.05);
+            border: 1.5px solid transparent;
+            transition: all .3s;
+        }
+        .player-card.active {
+            background: rgba(233,69,96,0.18);
+            border-color: #e94560;
+        }
+        .player-card .pname { font-weight: bold; font-size: .95em; }
+        .player-card .ppos  { font-size: .82em; opacity: .75; margin-top: 2px; }
+
+        .dice-wrap { text-align: center; margin: 14px 0 10px; }
+        #dice {
+            display: inline-block;
+            width: 62px; height: 62px;
+            background: #fff;
+            border-radius: 12px;
+            font-size: 2.2em;
+            line-height: 62px;
+            box-shadow: 0 4px 15px rgba(0,0,0,.35);
+            margin-bottom: 10px;
+            transition: transform .1s;
+        }
+        #dice.spin { animation: spin .07s linear infinite; }
+        @keyframes spin { 0%{transform:rotate(-5deg)} 50%{transform:rotate(5deg)} 100%{transform:rotate(-5deg)} }
+
+        #msg {
+            min-height: 38px;
+            text-align: center;
+            font-size: .88em;
+            color: #ffd700;
+            margin: 8px 0;
+            line-height: 1.4;
+        }
+
+        /* ─── Win Overlay ─── */
+        #winOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.75);
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+        .win-box {
+            background: linear-gradient(135deg, #1a1a2e, #0f3460);
+            border: 2px solid #ffd700;
+            border-radius: 18px;
+            padding: 40px 45px;
+            text-align: center;
+            color: #fff;
+            box-shadow: 0 0 50px rgba(255,215,0,.3);
+        }
+        .win-box .trophy { font-size: 4.5em; }
+        .win-box h2 { font-size: 2em; color: #ffd700; margin: 8px 0 4px; }
+        .win-box p  { opacity: .8; margin-bottom: 20px; }
+        .win-box .btn { max-width: 220px; margin: 0 auto; }
+    </style>
+</head>
+<body>
+
+<!-- ══════════════ SETUP ══════════════ -->
+<div id="setup">
+    <h1>🐍 مار و پله 🪜</h1>
+    <p>تعداد بازیکنان را انتخاب کنید</p>
+
+    <div class="count-row">
+        <button class="count-btn active" onclick="setCount(this,2)">۲</button>
+        <button class="count-btn"        onclick="setCount(this,3)">۳</button>
+        <button class="count-btn"        onclick="setCount(this,4)">۴</button>
+    </div>
+
+    <div id="playerInputs"></div>
+
+    <button class="btn btn-green" onclick="startGame()">▶ شروع بازی</button>
+</div>
+
+<!-- ══════════════ GAME ══════════════ -->
+<div id="game">
+    <canvas id="board" width="600" height="600"></canvas>
+
+    <div class="sidebar">
+        <h2>🎲 مار و پله</h2>
+        <div id="cards"></div>
+
+        <div class="dice-wrap">
+            <div id="dice">🎲</div>
+            <button class="btn btn-red" id="rollBtn" onclick="rollDice()">انداختن تاس</button>
+        </div>
+
+        <div id="msg"></div>
+        <button class="btn btn-dark" onclick="restartGame()">↩ بازی مجدد</button>
+    </div>
+</div>
+
+<!-- ══════════════ WIN ══════════════ -->
+<div id="winOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.75);
+     justify-content:center; align-items:center; z-index:50;">
+    <div class="win-box">
+        <div class="trophy">🏆</div>
+        <h2 id="winName"></h2>
+        <p>به خانه ۱۰۰ رسید!</p>
+        <button class="btn btn-green" style="max-width:200px;margin:0 auto;" onclick="restartGame()">بازی مجدد</button>
+    </div>
+</div>
+
+<script>
+// ───────────────────────────────────────
+//  Constants
+// ───────────────────────────────────────
+const CS = 60; // cell size
+const FACES = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+
+const LADDERS = { 4:14, 9:31, 20:38, 28:84, 40:59, 51:67, 63:81, 71:91 };
+const SNAKES  = { 99:12, 95:24, 88:31, 62:19, 74:53, 64:43, 17:7, 87:48 };
+
+const COLORS  = ['#e94560','#4caf50','#2196f3','#ff9800'];
+const EMOJIS  = ['🔴','🟢','🔵','🟡'];
+
+// ───────────────────────────────────────
+//  State
+// ───────────────────────────────────────
+let players = [], current = 0, busy = false, numPlayers = 2;
+
+// ───────────────────────────────────────
+//  Setup helpers
+// ───────────────────────────────────────
+function setCount(btn, n) {
+    numPlayers = n;
+    document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    buildInputs(n);
+}
+
+function buildInputs(n) {
+    const box = document.getElementById('playerInputs');
+    box.innerHTML = '';
+    for (let i = 1; i <= n; i++) {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.id = `p${i}`;
+        inp.placeholder = `نام بازیکن ${i}`;
+        inp.value = `بازیکن ${i}`;
+        box.appendChild(inp);
+    }
+}
+
+buildInputs(2);
+
+function startGame() {
+    players = [];
+    for (let i = 0; i < numPlayers; i++) {
+        const el = document.getElementById(`p${i+1}`);
+        players.push({ name: el ? el.value.trim() || `بازیکن ${i+1}` : `بازیکن ${i+1}`,
+                        pos: 1, color: COLORS[i], emoji: EMOJIS[i] });
+    }
+    current = 0; busy = false;
+    document.getElementById('setup').style.display = 'none';
+    document.getElementById('game').style.display   = 'flex';
+    updateCards();
+    paint();
+    setMsg(`نوبت ${players[0].name}`);
+}
+
+function restartGame() {
+    document.getElementById('winOverlay').style.display = 'none';
+    document.getElementById('game').style.display = 'none';
+    document.getElementById('setup').style.display = 'block';
+}
+
+// ───────────────────────────────────────
+//  Board coordinates
+// ───────────────────────────────────────
+function cellXY(n) {              // returns {x,y} pixel center
+    const i  = n - 1;
+    const rb = Math.floor(i / 10);
+    const ci = i % 10;
+    const col = rb % 2 === 0 ? ci : 9 - ci;
+    const row = 9 - rb;
+    return { x: col * CS + CS/2, y: row * CS + CS/2 };
+}
+
+// ───────────────────────────────────────
+//  Drawing
+// ───────────────────────────────────────
+function paint() {
+    const canvas = document.getElementById('board');
+    const ctx    = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 600, 600);
+
+    drawCells(ctx);
+    Object.entries(LADDERS).forEach(([a,b]) => drawLadder(ctx, +a, +b));
+    Object.entries(SNAKES ).forEach(([a,b]) => drawSnake (ctx, +a, +b));
+    drawPlayers(ctx);
+}
+
+function drawCells(ctx) {
+    for (let n = 1; n <= 100; n++) {
+        const i  = n - 1;
+        const rb = Math.floor(i / 10);
+        const ci = i % 10;
+        const col = rb % 2 === 0 ? ci : 9 - ci;
+        const row = 9 - rb;
+        const x = col * CS, y = row * CS;
+
+        const isSnakeHead  = SNAKES[n]  !== undefined;
+        const isLadderFoot = LADDERS[n] !== undefined;
+
+        if      (isSnakeHead)  ctx.fillStyle = '#ff6b6b';
+        else if (isLadderFoot) ctx.fillStyle = '#a5e887';
+        else    ctx.fillStyle = (rb + ci) % 2 === 0 ? '#f0e0c0' : '#d4b07a';
+
+        ctx.fillRect(x, y, CS, CS);
+        ctx.strokeStyle = '#9b7a3a';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, CS, CS);
+
+        // number in top corner
+        ctx.fillStyle = '#444';
+        ctx.font = 'bold 10px Tahoma';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(n, x + CS/2, y + 3);
+    }
+}
+
+function drawLadder(ctx, from, to) {
+    const a = cellXY(from), b = cellXY(to);
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    const nx = -dy/len * 7, ny = dx/len * 7;
+
+    ctx.save();
+    ctx.strokeStyle = '#7B3F00';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+
+    // rails
+    [[nx,ny],[-nx,-ny]].forEach(([ox,oy]) => {
+        ctx.beginPath();
+        ctx.moveTo(a.x+ox, a.y+oy);
+        ctx.lineTo(b.x+ox, b.y+oy);
+        ctx.stroke();
+    });
+
+    // rungs
+    const rungs = Math.max(3, Math.round(len / 22));
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#c68642';
+    for (let i = 0; i <= rungs; i++) {
+        const t = i / rungs;
+        const rx = a.x + dx*t, ry = a.y + dy*t;
+        ctx.beginPath();
+        ctx.moveTo(rx+nx, ry+ny);
+        ctx.lineTo(rx-nx, ry-ny);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function drawSnake(ctx, head, tail) {
+    const h = cellXY(head), t = cellXY(tail);
+    const dx = t.x - h.x, dy = t.y - h.y;
+
+    // wavy bezier
+    const cp1x = h.x + dx*.25 + dy*.45, cp1y = h.y + dy*.25 - dx*.45;
+    const cp2x = h.x + dx*.75 - dy*.45, cp2y = h.y + dy*.75 + dx*.45;
+
+    ctx.save();
+    ctx.strokeStyle = '#2d8a2d';
+    ctx.lineWidth   = 6;
+    ctx.lineCap     = 'round';
+    ctx.beginPath();
+    ctx.moveTo(h.x, h.y);
+    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, t.x, t.y);
+    ctx.stroke();
+
+    // head blob
+    ctx.fillStyle = '#1a5c1a';
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, 8, 0, Math.PI*2);
+    ctx.fill();
+
+    // eyes
+    ctx.fillStyle = 'red';
+    [[-3,-3],[3,-3]].forEach(([ox,oy]) => {
+        ctx.beginPath();
+        ctx.arc(h.x+ox, h.y+oy, 2, 0, Math.PI*2);
+        ctx.fill();
+    });
+
+    // tail tip
+    ctx.fillStyle = '#2d8a2d';
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, 4, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function drawPlayers(ctx) {
+    const byPos = {};
+    players.forEach((p,i) => (byPos[p.pos] ??= []).push({ p, i }));
+
+    for (const [pos, grp] of Object.entries(byPos)) {
+        const c = cellXY(+pos);
+        grp.forEach(({ p, i }, gi) => {
+            let ox = 0, oy = 0;
+            if (grp.length > 1) {
+                const ang = (gi / grp.length) * Math.PI * 2;
+                ox = Math.cos(ang) * 11;
+                oy = Math.sin(ang) * 11;
+            }
+            const px = c.x + ox, py = c.y + oy;
+
+            // shadow
+            ctx.fillStyle = 'rgba(0,0,0,.3)';
+            ctx.beginPath();
+            ctx.ellipse(px+2, py+3, 11, 8, 0, 0, Math.PI*2);
+            ctx.fill();
+
+            // body
+            ctx.fillStyle   = p.color;
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth   = 2;
+            ctx.beginPath();
+            ctx.arc(px, py, 11, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+
+            // active ring
+            if (i === current) {
+                ctx.strokeStyle = '#ffd700';
+                ctx.lineWidth   = 3;
+                ctx.beginPath();
+                ctx.arc(px, py, 15, 0, Math.PI*2);
+                ctx.stroke();
+            }
+        });
+    }
+}
+
+// ───────────────────────────────────────
+//  UI helpers
+// ───────────────────────────────────────
+function updateCards() {
+    document.getElementById('cards').innerHTML = players.map((p,i) => `
+        <div class="player-card ${i===current?'active':''}">
+            <div class="pname">${p.emoji} ${p.name}</div>
+            <div class="ppos">خانه: ${p.pos}</div>
+        </div>`).join('');
+}
+
+function setMsg(t) { document.getElementById('msg').innerHTML = t; }
+
+// ───────────────────────────────────────
+//  Dice & game logic
+// ───────────────────────────────────────
+function rollDice() {
+    if (busy) return;
+    busy = true;
+    document.getElementById('rollBtn').disabled = true;
+
+    let ticks = 0;
+    const id = setInterval(() => {
+        document.getElementById('dice').textContent = FACES[Math.floor(Math.random()*6)];
+        if (++ticks >= 12) {
+            clearInterval(id);
+            const v = Math.floor(Math.random()*6) + 1;
+            document.getElementById('dice').textContent = FACES[v-1];
+            processMove(v);
+        }
+    }, 75);
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function processMove(v) {
+    const p = players[current];
+    const np = p.pos + v;
+
+    setMsg(`${p.emoji} ${p.name} تاس <b>${v}</b> آورد`);
+
+    if (np > 100) {
+        setMsg(`${p.emoji} ${p.name} تاس ${v} آورد — باید دقیقاً به ۱۰۰ برسی!`);
+        await delay(1200);
+        endTurn(); return;
+    }
+
+    p.pos = np;
+    updateCards(); paint();
+    await delay(450);
+
+    if (np === 100) { showWin(p); return; }
+
+    if (SNAKES[np] !== undefined) {
+        const dest = SNAKES[np];
+        setMsg(`${p.emoji} ${p.name} مار خورد! 🐍<br>${np} ← ${dest}`);
+        p.pos = dest;
+        updateCards(); paint();
+        await delay(1100);
+    } else if (LADDERS[np] !== undefined) {
+        const dest = LADDERS[np];
+        setMsg(`${p.emoji} ${p.name} پله گرفت! 🪜<br>${np} → ${dest}`);
+        p.pos = dest;
+        updateCards(); paint();
+        await delay(1100);
+    }
+
+    endTurn();
+}
+
+function endTurn() {
+    current = (current + 1) % players.length;
+    updateCards(); paint();
+    document.getElementById('rollBtn').disabled = false;
+    busy = false;
+    setMsg(`نوبت ${players[current].emoji} ${players[current].name}`);
+}
+
+function showWin(p) {
+    document.getElementById('winName').textContent = `${p.emoji} ${p.name} برنده شد!`;
+    document.getElementById('winOverlay').style.display = 'flex';
+}
+</script>
+</body>
+</html>

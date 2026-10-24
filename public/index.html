@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>شطرنج العارفین</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#050815">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;700&display=swap" rel="stylesheet">
+  <!-- Socket.io کتابخانه -->
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Vazirmatn', 'Tahoma', sans-serif;
+      background: radial-gradient(ellipse at 50% 10%, #0d1b4e 0%, #050815 65%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 12px;
+      color: #e0d5b5;
+      overflow-x: hidden;
+    }
+
+    /* ── ستارگان پس‌زمینه ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      pointer-events: none; z-index: 0;
+      background:
+        radial-gradient(1px 1px at  5% 12%, rgba(255,215,0,.55) 0%, transparent 100%),
+        radial-gradient(1px 1px at 18% 30%, rgba(255,255,255,.40) 0%, transparent 100%),
+        radial-gradient(1px 1px at 30%  7%, rgba(255,255,255,.30) 0%, transparent 100%),
+        radial-gradient(1px 1px at 44% 22%, rgba(255,215,0,.45) 0%, transparent 100%),
+        radial-gradient(1px 1px at 58%  9%, rgba(255,255,255,.50) 0%, transparent 100%),
+        radial-gradient(1px 1px at 72% 38%, rgba(255,215,0,.30) 0%, transparent 100%),
+        radial-gradient(1px 1px at 83% 17%, rgba(255,255,255,.40) 0%, transparent 100%),
+        radial-gradient(1px 1px at 92% 27%, rgba(255,255,255,.50) 0%, transparent 100%),
+        radial-gradient(1px 1px at 11% 54%, rgba(255,215,0,.30) 0%, transparent 100%),
+        radial-gradient(1px 1px at 63% 62%, rgba(255,255,255,.28) 0%, transparent 100%),
+        radial-gradient(1px 1px at 36% 74%, rgba(255,215,0,.38) 0%, transparent 100%),
+        radial-gradient(1px 1px at 87% 79%, rgba(255,255,255,.28) 0%, transparent 100%),
+        radial-gradient(1px 1px at 49% 88%, rgba(255,215,0,.28) 0%, transparent 100%),
+        radial-gradient(1px 1px at 74% 84%, rgba(255,255,255,.35) 0%, transparent 100%),
+        radial-gradient(1px 1px at 22% 87%, rgba(255,255,255,.28) 0%, transparent 100%),
+        radial-gradient(1px 1px at  7% 70%, rgba(255,215,0,.38) 0%, transparent 100%),
+        radial-gradient(1px 1px at 96% 52%, rgba(255,255,255,.28) 0%, transparent 100%);
+    }
+
+    /* ════════════ کارت‌های روی صفحه ════════════ */
+    .card {
+      position: relative; z-index: 1;
+      background: rgba(255,255,255,.06);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(201,164,32,.25);
+      border-radius: 18px;
+      padding: 32px 30px;
+    }
+
+    .card-title {
+      font-size: 2em;
+      font-weight: 700;
+      color: #e8c347;
+      text-shadow: 0 0 22px rgba(232,195,71,.5);
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .card-sub {
+      font-size: .82em;
+      opacity: .5;
+      text-align: center;
+      line-height: 1.6;
+      margin-bottom: 24px;
+      font-weight: 300;
+    }
+
+    /* ── دکمه‌ها ── */
+    .btn {
+      display: block; width: 100%;
+      padding: 13px 16px;
+      border: none; border-radius: 10px;
+      font-family: 'Vazirmatn','Tahoma',sans-serif;
+      font-size: .95em; cursor: pointer;
+      transition: all .2s; margin-top: 8px;
+    }
+    .btn-gold  {
+      background: linear-gradient(135deg,#b8860b,#e8c347);
+      color: #0d0820; font-weight: 700;
+    }
+    .btn-gold:hover  { filter: brightness(1.1); box-shadow: 0 4px 20px rgba(232,195,71,.25); }
+    .btn-ghost {
+      background: rgba(255,255,255,.08);
+      color: #e0d5b5;
+      border: 1px solid rgba(255,255,255,.1);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); }
+    .btn-red   { background: rgba(233,69,96,.8); color: #fff; }
+    .btn-red:hover { filter: brightness(1.1); }
+    .btn:disabled { opacity: .35; cursor: not-allowed; filter: none !important; box-shadow: none !important; }
+
+    /* ── ورودی‌ها ── */
+    .inp {
+      display: block; width: 100%;
+      padding: 11px 14px; margin-top: 8px;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 10px;
+      color: #e0d5b5;
+      font-family: 'Vazirmatn','Tahoma',sans-serif;
+      font-size: .95em; text-align: right;
+      transition: border .2s;
+    }
+    .inp:focus { outline: none; border-color: #e8c347; }
+    .inp::placeholder { color: rgba(224,213,181,.3); }
+
+    .lbl { font-size: .82em; opacity: .6; margin-top: 14px; display: block; }
+
+    /* ── شمارنده بازیکن ── */
+    .cnt-row { display: flex; gap: 10px; justify-content: center; margin: 10px 0 18px; }
+    .cnt-btn {
+      width: 54px; height: 54px;
+      background: rgba(255,255,255,.07);
+      border: 2px solid rgba(255,255,255,.12);
+      border-radius: 12px; color: #e0d5b5;
+      font-family: 'Vazirmatn','Tahoma',sans-serif;
+      font-size: 1.3em; cursor: pointer;
+      transition: all .2s;
+    }
+    .cnt-btn:hover  { border-color: rgba(232,195,71,.5); }
+    .cnt-btn.active { background: rgba(232,195,71,.18); border-color: #e8c347; color: #e8c347; }
+
+    /* ── خطا ── */
+    .err {
+      color: #ff6b6b; font-size: .82em;
+      text-align: center; margin-top: 8px;
+      min-height: 20px;
+    }
+
+    /* ════════════ اتاق انتظار ════════════ */
+    #screen-lobby { width: 420px; max-width: 100%; }
+    .room-code-box {
+      background: rgba(232,195,71,.1);
+      border: 1px solid rgba(232,195,71,.35);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 18px;
+      text-align: center;
+    }
+    .room-code-box .label { font-size: .75em; opacity: .6; margin-bottom: 4px; }
+    .room-code-box .code  {
+      font-size: 2.2em; font-weight: 700;
+      color: #e8c347; letter-spacing: .18em;
+      text-shadow: 0 0 10px rgba(232,195,71,.3);
+    }
+    .copy-hint { font-size: .72em; opacity: .45; margin-top: 4px; }
+
+    .player-list { margin: 14px 0; }
+    .player-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px; margin-bottom: 6px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 9px;
+    }
+    .player-row .dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .player-row .pn { font-size: .9em; flex: 1; }
+    .player-row .owner-badge {
+      font-size: .68em; opacity: .55;
+      background: rgba(232,195,71,.15);
+      border: 1px solid rgba(232,195,71,.3);
+      border-radius: 4px; padding: 1px 6px;
+    }
+    .waiting-dots { opacity: .4; font-size: .85em; text-align: center; margin: 8px 0; }
+
+    /* ════════════ صفحه بازی ════════════ */
+    #screen-game {
+      display: none;
+      gap: 16px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .board-wrap {
+      transform-origin: top left;
+      flex-shrink: 0;
+    }
+
+    #board {
+      display: block;
+      border: 2px solid rgba(201,164,32,.35);
+      border-radius: 4px;
+      box-shadow:
+        0 0 50px rgba(201,164,32,.12),
+        0 0 100px rgba(5,8,21,.95);
+    }
+
+    /* ── پنل کناری ── */
+    .sb {
+      background: rgba(255,255,255,.05);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(201,164,32,.2);
+      border-radius: 16px;
+      padding: 18px;
+      width: 230px;
+      min-width: 200px;
+      position: relative; z-index: 1;
+    }
+    .sb-title {
+      text-align: center; font-size: .95em; font-weight: 700;
+      color: #e8c347; margin-bottom: 12px;
+      text-shadow: 0 0 10px rgba(232,195,71,.3);
+    }
+
+    .pcard {
+      padding: 8px 11px; border-radius: 9px;
+      margin-bottom: 7px;
+      background: rgba(255,255,255,.04);
+      border: 1.5px solid rgba(255,255,255,.06);
+      transition: all .3s;
+    }
+    .pcard.active {
+      background: rgba(232,195,71,.1);
+      border-color: rgba(232,195,71,.4);
+      box-shadow: 0 0 12px rgba(232,195,71,.1);
+    }
+    .pcard .pn { font-weight: 600; font-size: .87em; }
+    .pcard .ps { font-size: .7em; opacity: .6; margin-top: 2px; font-weight: 300; }
+
+    .dice-area { text-align: center; margin: 12px 0 8px; }
+    #dice {
+      display: inline-flex;
+      width: 60px; height: 60px;
+      background: linear-gradient(145deg,#140830,#241555);
+      border: 2px solid rgba(232,195,71,.4);
+      border-radius: 14px;
+      font-size: 2.1em;
+      align-items: center; justify-content: center;
+      margin-bottom: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08);
+    }
+
+    @keyframes rollAnim {
+      0%,100% { transform: rotate(-12deg) scale(.88); }
+      50%      { transform: rotate(12deg)  scale(1.12); }
+    }
+    #dice.rolling { animation: rollAnim .1s infinite; }
+
+    #msg {
+      min-height: 48px;
+      text-align: center;
+      font-size: .78em; line-height: 1.55;
+      color: #e8c347; font-weight: 300;
+      margin: 5px 0 3px;
+    }
+
+    .room-badge {
+      text-align: center; font-size: .7em; opacity: .45;
+      margin-bottom: 6px; letter-spacing: .05em;
+    }
+
+    /* ════════════ پیروزی ════════════ */
+    #screen-win {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(5,8,21,.88);
+      justify-content: center; align-items: center;
+      z-index: 200;
+    }
+    .win-box {
+      background: linear-gradient(145deg,#0a0520,#18104a);
+      border: 2px solid #e8c347;
+      border-radius: 22px;
+      padding: 44px 48px;
+      text-align: center; color: #e0d5b5;
+      box-shadow: 0 0 70px rgba(232,195,71,.25);
+      max-width: 340px; width: 90%;
+    }
+    .win-box .troph { font-size: 5em; display: block; margin-bottom: 6px; }
+    .win-box h2 { font-size: 1.7em; color: #e8c347; margin-bottom: 8px; }
+    .win-box p  { font-size: .85em; opacity: .7; line-height: 1.6; margin-bottom: 22px; }
+
+    /* ════════════ پنل‌های اصلی ════════════ */
+    #screen-home,
+    #screen-join { width: 380px; max-width: 100%; }
+
+    .divider {
+      display: flex; align-items: center; gap: 10px;
+      margin: 18px 0; opacity: .35;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px;
+      background: rgba(255,255,255,.3);
+    }
+    .divider span { font-size: .8em; white-space: nowrap; }
+
+    @media (max-width: 780px) {
+      .sb { width: 100%; max-width: 500px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     صفحه اصلی
+══════════════════════════════════════════ -->
+<div id="screen-home" class="card">
+  <div class="card-title">شطرنج العارفین</div>
+  <div class="card-sub">سفری از صفر عدم تا وصلت<br>۱۴۴ مقام سلوک عرفانی</div>
+
+  <span class="lbl">نام شما:</span>
+  <input class="inp" id="home-name" type="text" placeholder="نام سالک" maxlength="20">
+
+  <button class="btn btn-gold" onclick="goCreate()">✦ ایجاد اتاق جدید</button>
+
+  <div class="divider"><span>یا</span></div>
+
+  <button class="btn btn-ghost" onclick="goJoin()">پیوستن به اتاق دوستان</button>
+  <div class="err" id="home-err"></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     صفحه پیوستن
+══════════════════════════════════════════ -->
+<div id="screen-join" class="card" style="display:none">
+  <div class="card-title">پیوستن به اتاق</div>
+
+  <span class="lbl">نام شما:</span>
+  <input class="inp" id="join-name" type="text" placeholder="نام سالک" maxlength="20">
+
+  <span class="lbl">کد اتاق:</span>
+  <input class="inp" id="join-code" type="text" placeholder="مثال: AB3XY7"
+         maxlength="6" style="text-align:center;letter-spacing:.2em;font-size:1.1em;text-transform:uppercase">
+
+  <button class="btn btn-gold" onclick="doJoin()" style="margin-top:16px">پیوستن</button>
+  <button class="btn btn-ghost" onclick="show('screen-home')">بازگشت</button>
+  <div class="err" id="join-err"></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     اتاق انتظار
+══════════════════════════════════════════ -->
+<div id="screen-lobby" class="card" style="display:none">
+  <div class="card-title">اتاق انتظار</div>
+
+  <div class="room-code-box">
+    <div class="label">کد اتاق — برای دوستانتان بفرستید</div>
+    <div class="code" id="lobby-code">——</div>
+    <div class="copy-hint" id="copy-hint" onclick="copyCode()" style="cursor:pointer">
+      📋 برای کپی کلیک کنید
+    </div>
+  </div>
+
+  <span class="lbl">سالکان (<span id="lobby-count">1</span> / <span id="lobby-max">4</span>):</span>
+  <div class="player-list" id="lobby-players"></div>
+
+  <div class="waiting-dots" id="waiting-msg">در انتظار سالکان دیگر…</div>
+
+  <button class="btn btn-gold" id="start-btn" onclick="doStart()" style="display:none">
+    ▶ شروع بازی
+  </button>
+  <button class="btn btn-ghost" onclick="doLeave()">خروج</button>
+  <div class="err" id="lobby-err"></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     صفحه بازی
+══════════════════════════════════════════ -->
+<div id="screen-game">
+  <div class="board-wrap">
+    <canvas id="board" width="720" height="720"></canvas>
+  </div>
+
+  <div class="sb">
+    <div class="room-badge" id="game-room-badge"></div>
+    <div class="sb-title">✦ مقامات سلوک ✦</div>
+    <div id="cards"></div>
+    <div class="dice-area">
+      <div id="dice">🎲</div>
+      <button class="btn btn-gold" id="roll-btn" onclick="sendRoll()" disabled>
+        انداختن تاس
+      </button>
+    </div>
+    <div id="msg"></div>
+    <button class="btn btn-ghost" onclick="doLeave()" style="margin-top:4px">↩ خروج از بازی</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     صفحه پیروزی
+══════════════════════════════════════════ -->
+<div id="screen-win">
+  <div class="win-box">
+    <span class="troph">🏆</span>
+    <h2 id="win-name"></h2>
+    <p>به مقام لقاءالله رسید<br>سفر روحانی به پایان رسید</p>
+    <button class="btn btn-gold" style="max-width:200px;margin:0 auto" onclick="doLeave()">
+      بازی جدید
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     JavaScript
+══════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ════════════════════════════════════════
+//  پیکربندی تخته — کاربر این بخش را پر می‌کند
+// ════════════════════════════════════════
+
+const COLS = 12, ROWS = 12, TOTAL = 144;
+const CS   = 60;   // اندازه هر خانه به پیکسل
+
+// ── نام ۱۴۴ مقام ──
+// فعلاً placeholder — شما اسامی اصلی را جایگزین کنید
+const NAMES = Array.from({ length: 145 }, (_, i) => {
+  if (i === 0) return '';
+  if (i === 1) return 'صفر عدم';
+  if (i === 144) return 'لقاءالله';
+  return `مقام ${i}`;
+});
+// مثال استفاده:
+// NAMES[5]  = 'توبه';
+// NAMES[12] = 'زهد';
+// ...
+
+// ── مارها (از سرور می‌آید، اینجا فقط برای رندر) ──
+// قالب: { [خانه‌ی سر]: { to: خانه‌ی دم } }
+const SNAKE_DATA  = {};   // پس از دریافت config از سرور پر می‌شود
+const LADDER_DATA = {};   // پس از دریافت config از سرور پر می‌شود
+
+// ════════════════════════════════════════
+//  وضعیت بازیکن محلی
+// ════════════════════════════════════════
+const socket = io();
+let myIdx   = -1;      // ایندکس بازیکن در آرایه players
+let isBusy  = false;   // در حال انیمیشن
+
+// ════════════════════════════════════════
+//  ناوبری صفحه
+// ════════════════════════════════════════
+function show(id) {
+  ['screen-home','screen-join','screen-lobby','screen-game','screen-win']
+    .forEach(s => {
+      const el = document.getElementById(s);
+      if (el) el.style.display = (s === id) ? (id === 'screen-game' ? 'flex' : 'block') : 'none';
+    });
+}
+show('screen-home');
+
+// ════════════════════════════════════════
+//  صفحه اصلی
+// ════════════════════════════════════════
+function goCreate() {
+  const name = document.getElementById('home-name').value.trim() || 'سالک';
+  document.getElementById('home-err').textContent = '';
+  socket.emit('createRoom', { playerName: name, maxPlayers: 4 });
+}
+
+function goJoin() {
+  const name = document.getElementById('home-name').value.trim();
+  document.getElementById('join-name').value = name;
+  show('screen-join');
+}
+
+function doJoin() {
+  const name = document.getElementById('join-name').value.trim() || 'سالک';
+  const code = document.getElementById('join-code').value.trim().toUpperCase();
+  document.getElementById('join-err').textContent = '';
+  if (!code) { document.getElementById('join-err').textContent = 'کد اتاق را وارد کنید'; return; }
+  socket.emit('joinRoom', { playerName: name, roomCode: code });
+}
+
+// ════════════════════════════════════════
+//  اتاق انتظار
+// ════════════════════════════════════════
+function renderLobby(room) {
+  document.getElementById('lobby-code').textContent = room.code;
+  document.getElementById('lobby-count').textContent = room.players.length;
+  document.getElementById('lobby-max').textContent   = room.maxPlayers;
+
+  const list = document.getElementById('lobby-players');
+  list.innerHTML = room.players.map((p, i) => `
+    <div class="player-row">
+      <div class="dot" style="background:${p.color}"></div>
+      <div class="pn">${p.emoji} ${p.name}</div>
+      ${p.isOwner ? '<span class="owner-badge">مالک</span>' : ''}
+    </div>`).join('');
+
+  const isOwner = room.players[0]?.isOwner && myIdx === 0;
+  const startBtn = document.getElementById('start-btn');
+  const waitMsg  = document.getElementById('waiting-msg');
+
+  if (isOwner && room.players.length >= 2) {
+    startBtn.style.display = 'block';
+    waitMsg.style.display  = 'none';
+  } else {
+    startBtn.style.display = 'none';
+    waitMsg.style.display  = 'block';
+  }
+}
+
+function copyCode() {
+  const code = document.getElementById('lobby-code').textContent;
+  navigator.clipboard?.writeText(code).then(() => {
+    const hint = document.getElementById('copy-hint');
+    hint.textContent = '✓ کپی شد!';
+    setTimeout(() => hint.textContent = '📋 برای کپی کلیک کنید', 2000);
+  });
+}
+
+function doStart() {
+  socket.emit('startGame');
+}
+
+function doLeave() {
+  socket.disconnect();
+  location.reload();
+}
+
+// ════════════════════════════════════════
+//  رویدادهای Socket.io
+// ════════════════════════════════════════
+
+let _myOrder = -1;  // ایندکس ثابت من در اتاق
+
+socket.on('yourIndex', (idx) => { _myOrder = idx; });
+
+socket.on('roomCreated', ({ code, room }) => {
+  _myOrder = 0;
+  myIdx = 0;
+  renderLobby(room);
+  show('screen-lobby');
+});
+
+socket.on('roomUpdated', ({ room }) => {
+  renderLobby(room);
+  show('screen-lobby');
+});
+
+socket.on('joinError', (msg) => {
+  const errEl = document.getElementById('join-err') || document.getElementById('lobby-err');
+  if (errEl) errEl.textContent = msg;
+});
+
+socket.on('gameStarted', ({ room }) => {
+  myIdx = _myOrder;
+  initGame(room);
+  show('screen-game');
+  scaleBoard();
+  document.getElementById('roll-btn').disabled = (room.currentPlayer !== myIdx);
+  setMsg(`نوبت ${room.players[0].emoji} ${room.players[0].name}`);
+});
+
+socket.on('moveMade', ({ playerIdx, roll, result, room, won }) => {
+  animateDice(roll, () => {
+    applyMoveResult(playerIdx, roll, result, room, won);
+    isBusy = false;
+    document.getElementById('roll-btn').disabled = (room.currentPlayer !== myIdx) || won;
+  });
+});
+
+socket.on('gameWon', ({ winner }) => {
+  document.getElementById('win-name').textContent = `${winner.emoji} ${winner.name}`;
+  show('screen-win');
+});
+
+socket.on('playerLeft', ({ name, room }) => {
+  setMsg(`${name} از بازی خارج شد`);
+  updateGame(room);
+});
+
+// ════════════════════════════════════════
+//  منطق بازی
+// ════════════════════════════════════════
+let gameRoom = null;
+
+function initGame(room) {
+  gameRoom = room;
+  // پر کردن داده‌های مار/نردبان از سرور (اگر سرور بفرستد)
+  document.getElementById('game-room-badge').textContent = `اتاق: ${room.code}`;
+  updateGame(room);
+  document.fonts.ready.then(paint);
+}
+
+function updateGame(room) {
+  gameRoom = room;
+  updateCards(room);
+  paint();
+}
+
+function updateCards(room) {
+  if (!room) return;
+  document.getElementById('cards').innerHTML = room.players.map((p, i) => `
+    <div class="pcard ${i === room.currentPlayer ? 'active' : ''}">
+      <div class="pn">${p.emoji} ${p.name}</div>
+      <div class="ps">${NAMES[p.pos] || '—'} (${p.pos})</div>
+    </div>`).join('');
+}
+
+function updateRollBtn(room) {
+  if (!room) return;
+  const btn = document.getElementById('roll-btn');
+  const isMyTurn = room.players[room.currentPlayer]?.socketIdx === myIdx
+                   || room.currentPlayer === myIdx;
+  btn.disabled = isBusy || !isMyTurn || !gameRoom?.started;
+}
+
+function setMsg(html) {
+  document.getElementById('msg').innerHTML = html;
+}
+
+function sendRoll() {
+  if (isBusy) return;
+  isBusy = true;
+  document.getElementById('roll-btn').disabled = true;
+  socket.emit('rollDice');
+}
+
+async function applyMoveResult(playerIdx, roll, result, room, won) {
+  const player = room.players[playerIdx];
+  let msg = `${player.emoji} ${player.name} — تاس <b>${roll}</b>`;
+
+  if (result.event === 'overshoot') {
+    msg += `<br><small>باید دقیقاً به خانهٔ ${TOTAL} برسی!</small>`;
+  } else if (result.event === 'snake') {
+    msg += `<br>🐍 ${result.msg || 'مار!'}<br><small>از ${NAMES[result.from]} به ${NAMES[result.pos]}</small>`;
+  } else if (result.event === 'ladder') {
+    msg += `<br>🪜 ${result.msg || 'نردبان!'}<br><small>از ${NAMES[result.from]} به ${NAMES[result.pos]}</small>`;
+  }
+
+  setMsg(msg);
+  gameRoom = room;
+  updateCards(room);
+  paint();
+
+  if (won) {
+    document.getElementById('win-name').textContent = `${player.emoji} ${player.name}`;
+    setTimeout(() => show('screen-win'), 1200);
+  } else {
+    const nextP = room.players[room.currentPlayer];
+    setTimeout(() => {
+      setMsg(`نوبت ${nextP.emoji} ${nextP.name}<br><small>${NAMES[nextP.pos]}</small>`);
+    }, 1400);
+  }
+}
+
+// ════════════════════════════════════════
+//  انیمیشن تاس
+// ════════════════════════════════════════
+const FACES = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+
+function animateDice(finalValue, callback) {
+  const die = document.getElementById('dice');
+  die.classList.add('rolling');
+  let ticks = 0;
+  const id = setInterval(() => {
+    die.textContent = FACES[Math.floor(Math.random() * 6)];
+    if (++ticks >= 14) {
+      clearInterval(id);
+      die.classList.remove('rolling');
+      die.textContent = FACES[finalValue - 1];
+      callback();
+    }
+  }, 70);
+}
+
+// ════════════════════════════════════════
+//  رسم تخته
+// ════════════════════════════════════════
+
+function cell2xy(n) {
+  const i   = n - 1;
+  const rfb = Math.floor(i / COLS);
+  const ci  = i % COLS;
+  const col = rfb % 2 === 0 ? ci : COLS - 1 - ci;
+  const row = ROWS - 1 - rfb;
+  return { x: col * CS + CS / 2, y: row * CS + CS / 2 };
+}
+
+function lerp(a, b, t) { return Math.round(a + (b - a) * t); }
+
+function cellBg(n, alt) {
+  const t = (n - 1) / (TOTAL - 1);
+  let r, g, b;
+  if (t < 0.5) {
+    const tt = t / 0.5;
+    r = lerp(13, 18, tt); g = lerp(8, 35, tt); b = lerp(35, 88, tt);
+  } else {
+    const tt = (t - 0.5) / 0.5;
+    r = lerp(18, 128, tt); g = lerp(35, 90, tt); b = lerp(88, 8, tt);
+  }
+  if (alt) { r = Math.min(255, r + 13); g = Math.min(255, g + 13); b = Math.min(255, b + 13); }
+  return `rgb(${r},${g},${b})`;
+}
+
+function textCol(n) {
+  return (n - 1) / (TOTAL - 1) < 0.6 ? '#b8a88a' : '#ffe8a0';
+}
+
+function paint() {
+  const canvas = document.getElementById('board');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, COLS * CS, ROWS * CS);
+  drawCells(ctx);
+  Object.entries(LADDER_DATA).forEach(([f, d]) => drawLadder(ctx, +f, d.to));
+  Object.entries(SNAKE_DATA ).forEach(([f, d]) => drawSnake (ctx, +f, d.to));
+  if (gameRoom) drawTokens(ctx, gameRoom.players);
+}
+
+function drawCells(ctx) {
+  ctx.save();
+  ctx.direction = 'rtl';
+  for (let n = 1; n <= TOTAL; n++) {
+    const i   = n - 1;
+    const rfb = Math.floor(i / COLS);
+    const ci  = i % COLS;
+    const col = rfb % 2 === 0 ? ci : COLS - 1 - ci;
+    const row = ROWS - 1 - rfb;
+    const x = col * CS, y = row * CS;
+    const alt = (rfb + ci) % 2 === 0;
+
+    ctx.fillStyle = cellBg(n, alt);
+    ctx.fillRect(x, y, CS, CS);
+
+    ctx.strokeStyle = 'rgba(201,164,32,.18)';
+    ctx.lineWidth = .5;
+    ctx.strokeRect(x, y, CS, CS);
+
+    // شماره خانه (کوچک، گوشه)
+    ctx.fillStyle = 'rgba(200,180,100,.42)';
+    ctx.font = '7px Vazirmatn,Tahoma';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(n, x + 3, y + 3);
+
+    // نام مقام
+    const name = NAMES[n] || '';
+    drawName(ctx, name, x + CS / 2, y, CS, CS, textCol(n));
+  }
+  ctx.restore();
+}
+
+function drawName(ctx, text, cx, cy, w, h, color) {
+  ctx.fillStyle   = color;
+  ctx.textAlign   = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = '8px Vazirmatn,Tahoma';
+
+  const parts = wrapText(ctx, text, w - 6);
+  const lh = 9;
+  const startY = cy + (h - parts.length * lh) / 2 + lh / 2;
+  parts.forEach((p, i) => ctx.fillText(p, cx, startY + i * lh));
+}
+
+function wrapText(ctx, text, maxW) {
+  if (ctx.measureText(text).width <= maxW) return [text];
+  const sep   = text.includes(' ') ? ' ' : '‌';
+  const parts = text.split(sep);
+  if (parts.length >= 2) return [parts.slice(0, -1).join(sep), parts[parts.length - 1]];
+  return [text];
+}
+
+function drawLadder(ctx, from, to) {
+  const a = cell2xy(from), b = cell2xy(to);
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return;
+  const nx = -dy / len * 7, ny = dx / len * 7;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(232,195,71,.35)'; ctx.shadowBlur = 6;
+  ctx.strokeStyle = '#c9a420'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+
+  [[nx,ny],[-nx,-ny]].forEach(([ox,oy]) => {
+    ctx.beginPath(); ctx.moveTo(a.x+ox, a.y+oy); ctx.lineTo(b.x+ox, b.y+oy); ctx.stroke();
+  });
+
+  const rungs = Math.max(3, Math.round(len / 20));
+  ctx.lineWidth = 1.8; ctx.strokeStyle = '#e8c347';
+  for (let i = 0; i <= rungs; i++) {
+    const t = i / rungs;
+    const rx = a.x + dx*t, ry = a.y + dy*t;
+    ctx.beginPath(); ctx.moveTo(rx+nx, ry+ny); ctx.lineTo(rx-nx, ry-ny); ctx.stroke();
+  }
+
+  ctx.shadowBlur = 0; ctx.fillStyle = '#ffd700';
+  ctx.beginPath(); ctx.arc(a.x, a.y, 4, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawSnake(ctx, head, tail) {
+  const h = cell2xy(head), t = cell2xy(tail);
+  const dx = t.x-h.x, dy = t.y-h.y;
+  const cp1x=h.x+dx*.25+dy*.5, cp1y=h.y+dy*.25-dx*.5;
+  const cp2x=h.x+dx*.75-dy*.5, cp2y=h.y+dy*.75+dx*.5;
+
+  ctx.save();
+  ctx.shadowColor='rgba(200,0,0,.3)'; ctx.shadowBlur=8;
+  ctx.strokeStyle='#8b0000'; ctx.lineWidth=6;
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.beginPath(); ctx.moveTo(h.x,h.y);
+  ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,t.x,t.y); ctx.stroke();
+
+  ctx.fillStyle='#5a0000';
+  ctx.beginPath(); ctx.arc(h.x,h.y,8,0,Math.PI*2); ctx.fill();
+
+  ctx.shadowBlur=0; ctx.fillStyle='#ff4444';
+  [[-3,-3],[3,-3]].forEach(([ox,oy]) => {
+    ctx.beginPath(); ctx.arc(h.x+ox,h.y+oy,2.2,0,Math.PI*2); ctx.fill();
+  });
+
+  ctx.fillStyle='#8b0000';
+  ctx.beginPath(); ctx.arc(t.x,t.y,3,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawTokens(ctx, players) {
+  const byPos = {};
+  players.forEach((p, i) => (byPos[p.pos] ??= []).push({ p, i }));
+
+  for (const [pos, grp] of Object.entries(byPos)) {
+    const c = cell2xy(+pos);
+    grp.forEach(({ p, i }, gi) => {
+      let ox=0, oy=0;
+      if (grp.length > 1) {
+        const ang = (gi / grp.length) * Math.PI * 2;
+        ox = Math.cos(ang)*11; oy = Math.sin(ang)*11;
+      }
+      const px=c.x+ox, py=c.y+oy;
+
+      ctx.save();
+      ctx.fillStyle='rgba(0,0,0,.4)';
+      ctx.beginPath(); ctx.ellipse(px+2,py+4,10,7,0,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+
+      if (i === (gameRoom?.currentPlayer ?? -1)) {
+        ctx.save();
+        ctx.shadowColor='#ffd700'; ctx.shadowBlur=18;
+        ctx.strokeStyle='#ffd700'; ctx.lineWidth=2.5;
+        ctx.beginPath(); ctx.arc(px,py,15,0,Math.PI*2); ctx.stroke();
+        ctx.restore();
+      }
+
+      ctx.save();
+      ctx.shadowColor=p.color; ctx.shadowBlur=10;
+      ctx.fillStyle=p.color; ctx.strokeStyle='#fff'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(px,py,11,0,Math.PI*2);
+      ctx.fill(); ctx.stroke();
+      ctx.restore();
+    });
+  }
+}
+
+// ════════════════════════════════════════
+//  اسکیل پاسخگو
+// ════════════════════════════════════════
+function scaleBoard() {
+  const bw   = document.querySelector('.board-wrap');
+  const W    = COLS * CS; // 720
+  const avail = Math.min(window.innerWidth - 260, W);
+  const s     = Math.min(1, avail / W);
+  bw.style.transform       = `scale(${s})`;
+  bw.style.transformOrigin = 'top left';
+  bw.style.width  = `${W * s}px`;
+  bw.style.height = `${W * s}px`;
+}
+window.addEventListener('resize', scaleBoard);
+
+</script>
+</body>
+</html>
